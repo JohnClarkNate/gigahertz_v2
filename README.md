@@ -1,2 +1,2 @@
-# react-app
-Initial testing for fullstack deplyoment
+# gigahertz version 2
+redesigned gigahertz inventory-pos
