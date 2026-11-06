@@ -96,9 +96,9 @@ export function Dashboard() {
   const maxProductValue = Math.max(1, ...filteredProducts.map((product) => product[metric]))
 
   const renderNavigation = (items: typeof mainNav) => items.map(({ label, icon: Icon }) => (
-    <button key={label} className={`nav-item ${label === 'Dashboard' ? 'active' : ''}`}>
+    <a key={label} href={label === 'Inventory' ? '/?module=inventory' : '/'} className={`nav-item ${label === 'Dashboard' ? 'active' : ''}`}>
       <Icon size={21} strokeWidth={1.5} /><span>{label}</span>
-    </button>
+    </a>
   ))
 
   return <div className={`app-shell ${dark ? '' : 'light-mode'}`}>
