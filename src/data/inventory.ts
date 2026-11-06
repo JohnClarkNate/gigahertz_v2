@@ -14,6 +14,22 @@ export interface InventoryProduct {
   posVisible: boolean
   soldLifetime?: number
   updatedAt?: string
+  brand?: string
+  model?: string
+  tracksUnits?: boolean
+  identifierType?: string
+  serialNumbers?: string[]
+  specifications?: Record<string, string>
+}
+
+export type NewInventoryProduct = Pick<InventoryProduct, 'name' | 'sku' | 'category' | 'cost' | 'price' | 'reorderLevel' | 'posVisible'> & {
+  brand: string
+  model: string
+  tracksUnits: boolean
+  identifierType?: string
+  serialNumbers: string[]
+  specifications: Record<string, string>
+  initialQuantity: number
 }
 
 export interface InventoryUnitRecord {
@@ -45,7 +61,34 @@ const products: InventoryProduct[] = [
 // Replace this service with the Supabase query when the backend is ready.
 export async function getInventoryProducts(tab: InventoryTab): Promise<InventoryProduct[]> {
   await new Promise((resolve) => window.setTimeout(resolve, 700))
-  return tab === 'defective' ? products.filter((product) => product.defective > 0) : products
+  return (tab === 'defective' ? products.filter((product) => product.defective > 0) : products).slice()
+}
+
+export async function addInventoryProduct(input: NewInventoryProduct): Promise<InventoryProduct> {
+  await new Promise((resolve) => window.setTimeout(resolve, 180))
+  if (products.some((product) => product.sku.toLowerCase() === input.sku.trim().toLowerCase())) {
+    throw new Error('A product with this SKU already exists.')
+  }
+  const product: InventoryProduct = {
+    name: input.name.trim(),
+    sku: input.sku.trim(),
+    category: input.category,
+    quantity: input.initialQuantity,
+    defective: 0,
+    reorderLevel: input.reorderLevel,
+    status: input.initialQuantity === 0 ? 'Out of Stock' : input.initialQuantity <= input.reorderLevel ? 'Low Stock' : 'In Stock',
+    cost: input.cost,
+    price: input.price,
+    posVisible: input.posVisible,
+    brand: input.brand.trim(),
+    model: input.model.trim(),
+    tracksUnits: input.tracksUnits,
+    identifierType: input.identifierType,
+    serialNumbers: input.serialNumbers,
+    specifications: input.specifications,
+  }
+  products.unshift(product)
+  return product
 }
 
 export function getInventoryUnitHistory(product: InventoryProduct): InventoryUnitRecord[] {

@@ -23,6 +23,35 @@ const chartDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function formatPeso(amount: number) { return `₱${currency.format(amount)}` }
 
+function RollingDigit({ digit, place }: { digit: number; place: number }) {
+  const [position, setPosition] = useState(0)
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setPosition(digit))
+    return () => window.cancelAnimationFrame(frame)
+  }, [digit])
+  return <span className="rolling-digit" aria-hidden="true"><span className="rolling-digit-track" style={{ transform: `translateY(-${position}em)`, transitionDelay: `${Math.min(place, 8) * 18}ms` }}>{Array.from({ length: 10 }, (_, value) => <span key={value}>{value}</span>)}</span></span>
+}
+
+function RollingNumber({ value, currencyValue = false }: { value: string | number; currencyValue?: boolean }) {
+  const source = String(value)
+  const numberMatch = source.match(/\d[\d,]*(?:\.\d+)?/)
+  const number = numberMatch?.[0] ?? source
+  const start = numberMatch?.index ?? 0
+  const prefix = currencyValue ? '₱' : source.slice(0, start)
+  const suffix = currencyValue ? '' : source.slice(start + number.length)
+  let digitPlace = number.replace(/\D/g, '').length - 1
+
+  return <span className="rolling-number" aria-label={`${prefix}${number}${suffix}`}>
+    {prefix && <span className="rolling-fixed">{prefix}</span>}
+    {Array.from(number).map((character, index) => {
+      if (!/\d/.test(character)) return <span className="rolling-static" key={`static-${index}-${character}`} aria-hidden="true">{character}</span>
+      const place = digitPlace--
+      return <RollingDigit key={`digit-${place}`} digit={Number(character)} place={place} />
+    })}
+    {suffix && <span className="rolling-fixed">{suffix}</span>}
+  </span>
+}
+
 function SalesChart({ values }: { values: number[] }) {
   const points = values.map((value, index) => `${24 + index * 152},${160 - value * 1.34}`).join(' ')
   return <div className="chart-area">
@@ -35,17 +64,18 @@ function SalesChart({ values }: { values: number[] }) {
   </div>
 }
 
-function Metric({ label, value, icon: Icon, detail, loading = false, alert = false }: {
+function Metric({ label, value, icon: Icon, detail, loading = false, alert = false, currencyValue = false }: {
   label: string
   value: string
   icon: typeof ShoppingCart
   detail: ReactNode
   loading?: boolean
   alert?: boolean
+  currencyValue?: boolean
 }) {
   return <article className={`metric ${alert ? 'metric-alert' : ''}`}>
     <div className="metric-label">{label}<Icon size={17} strokeWidth={1.8} /></div>
-    <strong className="metric-value">{loading ? <i className="skeleton-block metric-value-skeleton" /> : value}</strong>
+    <strong className="metric-value">{loading ? <i className="skeleton-block metric-value-skeleton" /> : <RollingNumber value={value} currencyValue={currencyValue} />}</strong>
     <div className="metric-detail">{loading ? <i className="skeleton-block metric-detail-skeleton" /> : detail}</div>
   </article>
 }
@@ -126,17 +156,17 @@ export function Dashboard() {
           <span className="greeting">Good afternoon, User · Saturday, September 26, 2026</span>
         </div>
         <div className="topbar-actions">
-          <label className="global-search"><Search size={18} /><input aria-label="Search products" placeholder="Search products, SKUs, transactions" value={query} onChange={(event: ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)} /><kbd><Command size={11} /> Ctrl K</kbd></label>
+          <label className="global-search"><Search size={18} /><input aria-label="Search products" placeholder="Search products, SKUs, transactions" value={query} onChange={(event: ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)} /></label>
           <button className="icon-button" onClick={toggleTheme} aria-label="Toggle theme">{dark ? <Sun size={21} /> : <Moon size={21} />}</button>
         </div>
       </header>
 
       <div className="content-wrap">
         <section className="metrics-grid" aria-label="Business metrics">
-          <Metric label="Total Sales" value={data?.sales ?? '—'} icon={ShoppingCart} loading={loading} detail={<><b className="trend">↗ {data?.salesDelta ?? '—'}</b> vs. last month</>} />
-          <Metric label="Total Orders" value={data ? String(data.orders) : '—'} icon={ShoppingBag} loading={loading} detail={<><b className="trend">↗ {data?.ordersDelta ?? '—'}</b> vs. last month</>} />
-          <Metric label="Inventory Items" value={data ? String(data.inventoryItems) : '—'} icon={Box} loading={loading} detail={data ? `SKUs across 9 categories · ${currency.format(data.units)} units` : 'Loading inventory summary'} />
-          <Metric label="Low Stock Items" value={data ? String(data.lowStock) : '—'} icon={AlertTriangle} loading={loading} alert detail={<><b>1 out of stock · requires attention</b></>} />
+          <Metric label="Total Sales" value={data?.sales ?? '0'} icon={ShoppingCart} loading={loading} currencyValue detail={<><b className="trend">↗ <RollingNumber value={data?.salesDelta ?? '0%'} /></b> vs. last month</>} />
+          <Metric label="Total Orders" value={data ? String(data.orders) : '0'} icon={ShoppingBag} loading={loading} detail={<><b className="trend">↗ <RollingNumber value={data?.ordersDelta ?? 0} /></b> vs. last month</>} />
+          <Metric label="Inventory Items" value={data ? String(data.inventoryItems) : '0'} icon={Box} loading={loading} detail={data ? <>SKUs across <RollingNumber value={9} /> categories · <RollingNumber value={`${currency.format(data.units)} units`} /></> : 'Loading inventory summary'} />
+          <Metric label="Low Stock Items" value={data ? String(data.lowStock) : '0'} icon={AlertTriangle} loading={loading} alert detail={<><b><RollingNumber value={data?.outOfStock ?? 1} /> out of stock · requires attention</b></>} />
         </section>
 
         {error ? <section className="error-panel"><AlertTriangle size={22} /><div><strong>{error}</strong><span>Try again to reload the dashboard.</span></div><button className="text-action" onClick={reloadData}><RefreshCw size={15} /> Retry</button></section> : <div className="dashboard-layout">
@@ -151,7 +181,7 @@ export function Dashboard() {
 
             <section className="panel sales-panel">
               <PanelHeading title="Sales Overview" subtitle="Gross sales, all registers" action={<div className="segmented">{(['today', 'week', 'month'] as DashboardRange[]).map((item) => <button key={item} className={range === item ? 'active' : ''} onClick={() => setRange(item)}>{item === 'today' ? 'Today' : item === 'week' ? 'This Week' : 'This Month'}</button>)}</div>} />
-              <div className="sales-totals"><div><span>Sales</span><strong>{loading ? <i className="skeleton-block value-skeleton" /> : formatPeso(data?.salesOverview.sales ?? 0)}</strong></div><div><span>Orders</span><strong>{loading ? <i className="skeleton-block value-skeleton short" /> : data?.salesOverview.orders}</strong></div><div><span>Average Sales</span><strong>{loading ? <i className="skeleton-block value-skeleton" /> : formatPeso(data?.salesOverview.average ?? 0)}</strong></div></div>
+              <div className="sales-totals"><div><span>Sales</span><strong>{loading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(data?.salesOverview.sales ?? 0)} currencyValue />}</strong></div><div><span>Orders</span><strong>{loading ? <i className="skeleton-block value-skeleton short" /> : <RollingNumber value={data?.salesOverview.orders ?? 0} />}</strong></div><div><span>Average Sales</span><strong>{loading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(data?.salesOverview.average ?? 0)} currencyValue />}</strong></div></div>
               {loading ? <div className="chart-skeleton"><i /><i /><i /><i /></div> : <SalesChart values={data?.salesSeries ?? []} />}
             </section>
           </div>
@@ -161,9 +191,9 @@ export function Dashboard() {
               <PanelHeading title="Inventory Status" subtitle={`${data ? currency.format(data.inventoryItems) : '—'} active SKUs`} />
               <div className="inventory-content">
                 {loading ? <div className="skeleton-block stock-bar-skeleton" /> : <div className="stock-bar" aria-label="Inventory stock distribution"><span className="stock-low" /><span className="stock-out" /></div>}
-                <div className="stock-row"><span className="status-name"><i className="status-dot in-stock" />In Stock</span><strong>{loading ? <i className="skeleton-block stock-skeleton" /> : data?.inStock}</strong><span className="percentage">{loading ? <i className="skeleton-block percent-skeleton" /> : '98.0%'}</span></div>
-                <div className="stock-row"><span className="status-name"><i className="status-dot low-stock" />Low Stock</span><strong>{loading ? <i className="skeleton-block stock-skeleton" /> : data?.lowStockCount}</strong><span className="percentage">{loading ? <i className="skeleton-block percent-skeleton" /> : '1.6%'}</span></div>
-                <div className="stock-row"><span className="status-name"><i className="status-dot out-stock" />Out of Stock</span><strong>{loading ? <i className="skeleton-block stock-skeleton" /> : data?.outOfStock}</strong><span className="percentage">{loading ? <i className="skeleton-block percent-skeleton" /> : '0.4%'}</span></div>
+                <div className="stock-row"><span className="status-name"><i className="status-dot in-stock" />In Stock</span><strong>{loading ? <i className="skeleton-block stock-skeleton" /> : <RollingNumber value={data?.inStock ?? 0} />}</strong><span className="percentage">{loading ? <i className="skeleton-block percent-skeleton" /> : <RollingNumber value="98.0%" />}</span></div>
+                <div className="stock-row"><span className="status-name"><i className="status-dot low-stock" />Low Stock</span><strong>{loading ? <i className="skeleton-block stock-skeleton" /> : <RollingNumber value={data?.lowStockCount ?? 0} />}</strong><span className="percentage">{loading ? <i className="skeleton-block percent-skeleton" /> : <RollingNumber value="1.6%" />}</span></div>
+                <div className="stock-row"><span className="status-name"><i className="status-dot out-stock" />Out of Stock</span><strong>{loading ? <i className="skeleton-block stock-skeleton" /> : <RollingNumber value={data?.outOfStock ?? 0} />}</strong><span className="percentage">{loading ? <i className="skeleton-block percent-skeleton" /> : <RollingNumber value="0.4%" />}</span></div>
                 <p className="sync-note">Last stock count synced {data?.stockSyncedAt ?? '—'}</p>
               </div>
             </section>
@@ -175,13 +205,12 @@ export function Dashboard() {
                 return <div className="product-row" key={product.name}>
                   <span className="rank">{index + 1}</span>
                   <div className="product-data"><span>{product.name}</span><div className="product-track"><i style={{ width: `${Math.max(6, (amount / maxProductValue) * 100)}%` }} /></div></div>
-                  <strong className="product-value">{metric === 'revenue' ? formatPeso(amount) : `${currency.format(amount)} units`}</strong>
+                  <strong className="product-value"><RollingNumber value={metric === 'revenue' ? formatPeso(amount) : `${currency.format(amount)} units`} currencyValue={metric === 'revenue'} /></strong>
                 </div>
               }) : <div className="empty-state"><Search size={19} /><span>No products match “{query}”.</span><button onClick={() => setQuery('')}>Clear search</button></div>}</div>
             </section>
           </div>
         </div>}
-        <footer className="page-foot"><CircleHelp size={14} /><span>Dashboard data is a demonstration snapshot.</span></footer>
       </div>
     </main>
   </div>
