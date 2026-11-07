@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ChangeEvent, MouseEvent, ReactNode } from 'react'
+import type { ChangeEvent, MouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import {
   Activity, AlertTriangle, Box, ChevronRight, CircleHelp, Command, FileText,
   LayoutDashboard, LogOut, Menu, Moon, Package, RefreshCw, Search, ShoppingBag,
   ShoppingCart, Sun, Users, DollarSign, Lightbulb,
 } from 'lucide-react'
-import { DashboardData, DashboardRange, ProductMetric, getDashboardData } from '../data/dashboard'
+import { DashboardData, DashboardRange, ProductMetric, getDashboardData, getDashboardSalesOverview } from '../data/dashboard'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import gigahertzLogo from '../assets/gigahertz-logo-white.png'
 
@@ -53,18 +53,44 @@ function RollingNumber({ value, currencyValue = false }: { value: string | numbe
   </span>
 }
 
-function SalesChart({ values }: { values: number[] }) {
-  const points = values.map((value, index) => `${24 + index * 152},${160 - value * 1.34}`).join(' ')
+function SalesChart({ values, range }: { values: number[]; range: DashboardRange }) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [pointerPosition, setPointerPosition] = useState({ x: 50, y: 40 })
+  const coordinates = values.map((value, index) => ({ x: values.length < 2 ? 480 : 24 + index * (912 / (values.length - 1)), y: 160 - value * 1.34 }))
+  const points = coordinates.map(({ x, y }) => `${x},${y}`).join(' ')
+  const areaPath = coordinates.length ? `M24,168 L${points} L936,168 Z` : ''
+  const rangeLabel = range === 'today' ? 'today' : range === 'week' ? 'this week' : 'this month'
+  const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    if (!bounds.width || !bounds.height || !values.length) return
+    const x = (event.clientX - bounds.left) / bounds.width * 960
+    const nearest = coordinates.reduce((best, point, index) => Math.abs(point.x - x) < Math.abs(coordinates[best].x - x) ? index : best, 0)
+    setHoverIndex(nearest)
+    const edgePadding = Math.min(30, 84 / bounds.width * 100)
+    setPointerPosition({
+      x: Math.max(edgePadding, Math.min(100 - edgePadding, (event.clientX - bounds.left) / bounds.width * 100)),
+      y: Math.max(23, Math.min(83, (event.clientY - bounds.top) / bounds.height * 100)),
+    })
+  }
   return <div className="chart-area">
     <div className="chart-values" aria-hidden="true"><span>₱100K</span><span>₱75K</span><span>₱50K</span><span>₱25K</span><span>0</span></div>
-    <svg className="sales-chart" viewBox="0 0 960 190" preserveAspectRatio="none" role="img" aria-label="Sales trend for the week">
-      {[8, 48, 88, 128, 168].map((y) => <line key={y} x1="24" x2="936" y1={y} y2={y} className="chart-gridline" />)}
-      <polyline points={points} className="chart-line" />
-    </svg>
+    <div className="sales-chart-wrap">
+      <svg className="sales-chart" viewBox="0 0 960 190" preserveAspectRatio="none" role="img" aria-label={`Sales trend for ${rangeLabel}`} onPointerMove={onPointerMove} onPointerLeave={() => setHoverIndex(null)}>
+        <defs><linearGradient id="sales-area-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--blue)" stopOpacity=".2" /><stop offset="100%" stopColor="var(--blue)" stopOpacity="0" /></linearGradient></defs>
+        {coordinates.length > 0 && <path d={areaPath} className="chart-area-fill" />}
+        {[8, 48, 88, 128, 168].map((y) => <line key={y} x1="24" x2="936" y1={y} y2={y} className="chart-gridline" />)}
+        {hoverIndex !== null && coordinates[hoverIndex] && <>
+          <line x1={coordinates[hoverIndex].x} x2={coordinates[hoverIndex].x} y1="8" y2="168" className="chart-hover-guide" />
+          <circle cx={coordinates[hoverIndex].x} cy={coordinates[hoverIndex].y} r="3.5" className="chart-hover-point" />
+        </>}
+        <polyline points={points} pathLength="1" className="chart-line" />
+        <rect x="24" y="8" width="912" height="160" className="chart-hit-area" />
+      </svg>
+      {hoverIndex !== null && values[hoverIndex] !== undefined && <div className="chart-tooltip" style={{ left: `${pointerPosition.x}%`, top: `${pointerPosition.y}%` }}><span>Sales</span><strong>₱{currency.format(values[hoverIndex] * 1000)}</strong></div>}
+    </div>
     <div className="chart-days">{chartDays.map((day) => <span key={day}>{day}</span>)}</div>
   </div>
 }
-
 function Metric({ label, value, icon: Icon, detail, loading = false, alert = false, currencyValue = false }: {
   label: string
   value: string
@@ -89,7 +115,9 @@ export function Dashboard() {
   const [range, setRange] = useState<DashboardRange>('week')
   const [metric, setMetric] = useState<ProductMetric>('revenue')
   const [data, setData] = useState<DashboardData | null>(null)
+  const [salesPanelData, setSalesPanelData] = useState<Pick<DashboardData, 'salesOverview' | 'salesSeries'> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [salesLoading, setSalesLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [dark, setDark] = useState(getInitialDarkTheme)
@@ -119,9 +147,18 @@ export function Dashboard() {
     setLoading(true)
     setError(null)
     const minimumSkeletonTime = new Promise<void>((resolve) => window.setTimeout(resolve, 700))
-    Promise.all([getDashboardData(range), minimumSkeletonTime])
+    Promise.all([getDashboardData('week'), minimumSkeletonTime])
       .then(([next]) => { if (current) { setData(next); setLoading(false) } })
       .catch(() => { if (current) { setError('Dashboard data could not be loaded.'); setLoading(false) } })
+    return () => { current = false }
+  }, [requestKey])
+
+  useEffect(() => {
+    let current = true
+    setSalesLoading(true)
+    getDashboardSalesOverview(range)
+      .then((next) => { if (current) { setSalesPanelData(next); setSalesLoading(false) } })
+      .catch(() => { if (current) setSalesLoading(false) })
     return () => { current = false }
   }, [range, requestKey])
 
@@ -131,7 +168,7 @@ export function Dashboard() {
   const maxProductValue = Math.max(1, ...filteredProducts.map((product) => product[metric]))
 
   const renderNavigation = (items: typeof mainNav) => items.map(({ label, icon: Icon }) => (
-    <a key={label} href={label === 'Inventory' ? '/?module=inventory' : '/'} className={`nav-item ${label === 'Dashboard' ? 'active' : ''}`}>
+    <a key={label} href={label === 'Inventory' ? '/?module=inventory' : label === 'Finance' ? '/?module=finance' : '/'} className={`nav-item ${label === 'Dashboard' ? 'active' : ''}`}>
       <Icon size={21} strokeWidth={1.5} /><span>{label}</span>
     </a>
   ))
@@ -186,8 +223,8 @@ export function Dashboard() {
 
             <section className="panel sales-panel">
               <PanelHeading title="Sales Overview" subtitle="Gross sales, all registers" action={<div className="segmented">{(['today', 'week', 'month'] as DashboardRange[]).map((item) => <button key={item} className={range === item ? 'active' : ''} onClick={() => setRange(item)}>{item === 'today' ? 'Today' : item === 'week' ? 'This Week' : 'This Month'}</button>)}</div>} />
-              <div className="sales-totals"><div><span>Sales</span><strong>{loading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(data?.salesOverview.sales ?? 0)} currencyValue />}</strong></div><div><span>Orders</span><strong>{loading ? <i className="skeleton-block value-skeleton short" /> : <RollingNumber value={data?.salesOverview.orders ?? 0} />}</strong></div><div><span>Average Sales</span><strong>{loading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(data?.salesOverview.average ?? 0)} currencyValue />}</strong></div></div>
-              {loading ? <div className="chart-skeleton"><i /><i /><i /><i /></div> : <SalesChart values={data?.salesSeries ?? []} />}
+              <div className="sales-totals"><div><span>Sales</span><strong>{salesLoading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(salesPanelData?.salesOverview.sales ?? 0)} currencyValue />}</strong></div><div><span>Orders</span><strong>{salesLoading ? <i className="skeleton-block value-skeleton short" /> : <RollingNumber value={salesPanelData?.salesOverview.orders ?? 0} />}</strong></div><div><span>Average Sales</span><strong>{salesLoading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(salesPanelData?.salesOverview.average ?? 0)} currencyValue />}</strong></div></div>
+              {salesLoading ? <div className="chart-skeleton"><i /><i /><i /><i /></div> : <SalesChart key={range} values={salesPanelData?.salesSeries ?? []} range={range} />}
             </section>
           </div>
 
@@ -204,7 +241,7 @@ export function Dashboard() {
             </section>
 
             <section className="panel products-panel">
-              <PanelHeading title="Top Products" subtitle={range === 'week' ? 'This week' : range === 'today' ? 'Today' : 'This month'} action={<div className="segmented metric-toggle"><button className={metric === 'revenue' ? 'active' : ''} onClick={() => setMetric('revenue')}>Revenue</button><button className={metric === 'units' ? 'active' : ''} onClick={() => setMetric('units')}>Units</button></div>} />
+              <PanelHeading title="Top Products" subtitle="This week" action={<div className="segmented metric-toggle"><button className={metric === 'revenue' ? 'active' : ''} onClick={() => setMetric('revenue')}>Revenue</button><button className={metric === 'units' ? 'active' : ''} onClick={() => setMetric('units')}>Units</button></div>} />
               <div className="product-list">{loading ? [1, 2, 3, 4, 5].map((item) => <div className="product-row skeleton" key={item} />) : filteredProducts.length ? filteredProducts.map((product, index) => {
                 const amount = product[metric]
                 return <div className="product-row" key={product.name}>

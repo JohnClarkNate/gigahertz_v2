@@ -32,6 +32,12 @@ export type NewInventoryProduct = Pick<InventoryProduct, 'name' | 'sku' | 'categ
   initialQuantity: number
 }
 
+export type EditableInventoryProduct = Pick<InventoryProduct, 'name' | 'cost' | 'price' | 'reorderLevel' | 'posVisible'> & {
+  brand: string
+  model: string
+  specifications: Record<string, string>
+}
+
 export interface InventoryUnitRecord {
   serialNumber: string
   status: 'Defective' | 'Sold'
@@ -89,6 +95,24 @@ export async function addInventoryProduct(input: NewInventoryProduct): Promise<I
   }
   products.unshift(product)
   return product
+}
+
+export async function updateInventoryProduct(sku: string, input: EditableInventoryProduct): Promise<InventoryProduct> {
+  await new Promise((resolve) => window.setTimeout(resolve, 180))
+  const product = products.find((item) => item.sku === sku)
+  if (!product) throw new Error('This product could not be found.')
+  Object.assign(product, {
+    name: input.name.trim(),
+    brand: input.brand.trim(),
+    model: input.model.trim(),
+    cost: input.cost,
+    price: input.price,
+    reorderLevel: input.reorderLevel,
+    posVisible: input.posVisible,
+    specifications: { ...input.specifications },
+    status: product.quantity === 0 ? 'Out of Stock' : product.quantity <= input.reorderLevel ? 'Low Stock' : 'In Stock',
+  })
+  return { ...product }
 }
 
 export function setInventoryProductVisibility(sku: string, posVisible: boolean): InventoryProduct | undefined {

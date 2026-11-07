@@ -69,3 +69,8 @@ export async function getDashboardData(range: DashboardRange): Promise<Dashboard
   await new Promise((resolve) => setTimeout(resolve, 180))
   return { ...commonData, ...dataByRange[range] }
 }
+
+export async function getDashboardSalesOverview(range: DashboardRange): Promise<Pick<DashboardData, 'salesOverview' | 'salesSeries'>> {
+  await new Promise((resolve) => setTimeout(resolve, 180))
+  return dataByRange[range]
+}

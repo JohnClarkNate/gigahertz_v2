@@ -18,6 +18,7 @@ The app currently uses mock data in `src/data/dashboard.ts` and `src/data/invent
 - The theme control and compact-screen navigation are local UI interactions.
 - The two-column panels, KPI grid, and chart sizing respond to available width and short desktop viewports.
 - The displayed values and advisor tip are demonstration data in `src/data/dashboard.ts`.
+- Open Finance at `/?module=finance` or use Finance in the Dashboard sidebar. Finance transactions are the November 2026 sample snapshot in `src/data/finance.ts`; tabs, search, category/method filters, and date/amount sorting operate on that mock data. The date range control is fixed to the supplied November snapshot because no other period values were provided.
 - Open Inventory at `/?module=inventory`; return to Dashboard from the sidebar.
 - Inventory search filters the displayed mock products, Products/Defective Units switches the table contents, and pagination switches through the 16 mock products. Loading skeletons and a retryable error state are included.
 - Inventory figures and initial product rows are demonstration data in `src/data/inventory.ts`. Add Product runs the six-step Figma wizard and adds the result to the replaceable in-memory mock service. Import CSV, filter, and row menu controls are visual only because the system documentation could not be accessed and does not provide verified behavior here.

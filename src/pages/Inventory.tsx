@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, MouseEvent } from 'react'
 import { Activity, AlertTriangle, Box, ChevronLeft, ChevronRight, Command, DollarSign, EyeOff, FilePlus2, FileText, LayoutDashboard, List, LogOut, Menu, Moon, MoreHorizontal, MoreVertical, Package, Pencil, Plus, Search, SlidersHorizontal, Sun, Trash2, Users, ShoppingCart, X } from 'lucide-react'
 import { deleteInventoryProduct, getInventoryProducts, getInventorySoldLifetime, getInventorySpecifications, getInventoryUnitHistory, InventoryProduct, InventoryTab, markInventoryProductDefective, setInventoryProductVisibility } from '../data/inventory'
 import { AddInventoryProductWizard } from '../components/AddInventoryProductWizard'
+import { EditInventoryProductWizard } from '../components/EditInventoryProductWizard'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import logo from '../assets/inventory-logo.png'
 import avatar from '../assets/inventory-avatar.svg'
@@ -51,6 +52,7 @@ export function Inventory() {
   const [page, setPage] = useState(0)
   const [selectedProduct, setSelectedProduct] = useState<InventoryProduct | null>(null)
   const [selectedProductTab, setSelectedProductTab] = useState<'overview' | 'units'>('overview')
+  const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
   const [addProductOpen, setAddProductOpen] = useState(false)
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function Inventory() {
   }
   const handleRowAction = (action: InventoryRowAction, product: InventoryProduct) => {
     if (action === 'edit') {
-      openProductDetails(product)
+      setEditingProduct(product)
       return
     }
     if (action === 'visibility') {
@@ -138,7 +140,12 @@ export function Inventory() {
         </section>
       </div>
     </main>
-    {selectedProduct && <InventoryDetailsDrawer key={`${selectedProduct.sku}-${selectedProductTab}`} product={selectedProduct} initialTab={selectedProductTab} onClose={() => setSelectedProduct(null)} />}
+    {selectedProduct && <InventoryDetailsDrawer key={`${selectedProduct.sku}-${selectedProductTab}`} product={selectedProduct} initialTab={selectedProductTab} onClose={() => setSelectedProduct(null)} onEdit={() => { setSelectedProduct(null); setEditingProduct(selectedProduct) }} />}
+    {editingProduct && <EditInventoryProductWizard product={editingProduct} onClose={() => setEditingProduct(null)} onSaved={(updated) => {
+      setData((current) => current.map((item) => item.sku === updated.sku ? updated : item))
+      setSelectedProduct((current) => current?.sku === updated.sku ? updated : current)
+      setEditingProduct(null)
+    }} />}
     {addProductOpen && <AddInventoryProductWizard onClose={() => setAddProductOpen(false)} onSaved={() => {
       setAddProductOpen(false)
       setTab('products')
@@ -149,14 +156,42 @@ export function Inventory() {
   </div>
 }
 
-function InventoryRow({ item, onSelect }: { item: InventoryProduct; onSelect: () => void }) {
-  const statusIcon = item.status === 'Out of Stock' ? outStockDot : item.status === 'Low Stock' ? lowStockDot : inStockDot
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect() } }
-  return <div className="inv-row inv-product-row" role="button" tabIndex={0} onClick={onSelect} onKeyDown={onKeyDown} aria-label={`View details for ${item.name}`}><span className="inv-product-name">{item.name}</span><span className="inv-mono">{item.sku}</span><span>{item.category}</span><span className="inv-quantity">{item.status !== 'In Stock' && <AlertTriangle className={`inv-quantity-warning ${item.status === 'Out of Stock' ? 'critical' : ''}`} size={14} strokeWidth={2.2} />}<span><strong>{item.quantity}</strong> units{item.defective > 0 && <small className="inv-defective">{item.defective} defective</small>}</span></span><span>{item.reorderLevel}</span><span className={`inv-status ${item.status.toLowerCase().replace(/ /g, '-')}`}><img src={statusIcon} alt="" />{item.status}</span><span>₱{peso.format(item.cost)}</span><span>₱{peso.format(item.price)}</span><span className="inv-pos"><img src={item.posVisible ? visibleDot : hiddenDot} alt="" />{item.posVisible ? 'Visible' : 'Hidden'}</span><button className="inv-row-menu" aria-label={`More actions for ${item.name}`} onClick={(event) => event.stopPropagation()}><MoreVertical size={17} /></button></div>
-}
+type InventoryRowAction = 'edit' | 'visibility' | 'defective' | 'units' | 'delete'
 
-function InventoryDetailsDrawer({ product, onClose }: { product: InventoryProduct; onClose: () => void }) {
-  const [tab, setTab] = useState<'overview' | 'units'>('overview')
+function InventoryRow({ item, onSelect, onAction }: { item: InventoryProduct; onSelect: () => void; onAction: (action: InventoryRowAction) => void }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const rowRef = useRef<HTMLDivElement>(null)
+  const statusIcon = item.status === 'Out of Stock' ? outStockDot : item.status === 'Low Stock' ? lowStockDot : inStockDot
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect() } }
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const closeOutside = (event: globalThis.MouseEvent) => { if (!rowRef.current?.contains(event.target as Node)) setMenuOpen(false) }
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('mousedown', closeOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => { document.removeEventListener('mousedown', closeOutside); document.removeEventListener('keydown', closeOnEscape) }
+  }, [menuOpen])
+
+  const runAction = (action: InventoryRowAction) => { setMenuOpen(false); onAction(action) }
+  return <div ref={rowRef} className={`inv-row inv-product-row ${menuOpen ? 'menu-open' : ''}`} role="button" tabIndex={0} onClick={onSelect} onKeyDown={onKeyDown} aria-label={`View details for ${item.name}`}>
+    <span className="inv-product-name">{item.name}</span><span className="inv-mono">{item.sku}</span><span>{item.category}</span>
+    <span className="inv-quantity">{item.status !== 'In Stock' && <AlertTriangle className={`inv-quantity-warning ${item.status === 'Out of Stock' ? 'critical' : ''}`} size={14} strokeWidth={2.2} />}<span><strong>{item.quantity}</strong> units{item.defective > 0 && <small className="inv-defective">{item.defective} defective</small>}</span></span>
+    <span>{item.reorderLevel}</span><span className={`inv-status ${item.status.toLowerCase().replace(/ /g, '-')}`}><img src={statusIcon} alt="" />{item.status}</span>
+    <span>₱{peso.format(item.cost)}</span><span>₱{peso.format(item.price)}</span><span className="inv-pos"><img src={item.posVisible ? visibleDot : hiddenDot} alt="" />{item.posVisible ? 'Visible' : 'Hidden'}</span>
+    <button className="inv-row-menu" aria-label={`More actions for ${item.name}`} aria-haspopup="menu" aria-expanded={menuOpen} onClick={(event) => { event.stopPropagation(); setMenuOpen((open) => !open) }}><MoreVertical size={17} /></button>
+    {menuOpen && <div className="inv-action-menu" role="menu" onClick={(event) => event.stopPropagation()}>
+      <button role="menuitem" onClick={() => runAction('edit')}><Pencil size={14} />Edit Product</button>
+      <button role="menuitem" onClick={() => runAction('visibility')}><EyeOff size={14} />{item.posVisible ? 'Hide from POS' : 'Show on POS'}</button>
+      <button role="menuitem" disabled={item.quantity < 1} onClick={() => runAction('defective')}><AlertTriangle size={14} />Mark as Defective</button>
+      <button role="menuitem" onClick={() => runAction('units')}><List size={14} />Manage units</button>
+      <div className="inv-action-menu-separator" />
+      <button className="danger" role="menuitem" onClick={() => runAction('delete')}><Trash2 size={14} />Delete Product</button>
+    </div>}
+  </div>
+}
+function InventoryDetailsDrawer({ product, initialTab = 'overview', onClose, onEdit }: { product: InventoryProduct; initialTab?: 'overview' | 'units'; onClose: () => void; onEdit: () => void }) {
+  const [tab, setTab] = useState<'overview' | 'units'>(initialTab)
   const [unitQuery, setUnitQuery] = useState('')
   const history = useMemo(() => getInventoryUnitHistory(product), [product])
   const shownHistory = history.filter((unit) => `${unit.serialNumber} ${unit.status}`.toLowerCase().includes(unitQuery.trim().toLowerCase()))
@@ -181,7 +216,7 @@ function InventoryDetailsDrawer({ product, onClose }: { product: InventoryProduc
         <span className="inv-drawer-sku">{product.sku}</span>
         <h2>{product.name}</h2>
         <div className="inv-drawer-status-line"><span className={`inv-drawer-status ${product.status.toLowerCase().replace(/ /g, '-')}`}><i />{product.status}</span><span>Last updated · {updated}</span></div>
-        <div className="inv-drawer-actions"><button><Pencil size={13} />Edit</button><button><EyeOff size={13} />{product.posVisible ? 'Hide from POS' : 'Show on POS'}</button></div>
+        <div className="inv-drawer-actions"><button onClick={onEdit}><Pencil size={13} />Edit</button><button><EyeOff size={13} />{product.posVisible ? 'Hide from POS' : 'Show on POS'}</button></div>
       </header>
       <section className="inv-drawer-stats" aria-label="Unit counts"><div><span>On Hand</span><strong>{product.quantity + product.defective}</strong></div><div><span>Available</span><strong>{product.quantity}</strong></div><div><span>Defective</span><strong>{product.defective}</strong></div><div><span>Sold (lifetime)</span><strong>{sold}</strong></div></section>
       <div className="inv-drawer-content">
