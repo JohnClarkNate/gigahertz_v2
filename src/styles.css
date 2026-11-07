@@ -152,6 +152,9 @@ button { color: inherit; }
 .advisor-footer > div { display: flex; align-items: center; gap: 20px; }
 .text-action { display: inline-flex; align-items: center; gap: 7px; padding: 3px 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; white-space: nowrap; }
 .text-action:hover { color: var(--text); }
+.text-action:disabled { cursor: wait; opacity: .75; }
+.refresh-tip-spinning { animation: refresh-tip-spin .7s linear infinite; }
+@keyframes refresh-tip-spin { to { transform: rotate(360deg); } }
 .text-action.blue-action { color: var(--blue); font-weight: 600; }
 
 .panel-heading { display: flex; min-height: 63px; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 22px 9px; border-bottom: 1px solid var(--border); }

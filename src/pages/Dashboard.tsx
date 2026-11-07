@@ -5,7 +5,7 @@ import {
   LayoutDashboard, LogOut, Menu, Moon, Package, RefreshCw, Search, ShoppingBag,
   ShoppingCart, Sun, Users, DollarSign, Lightbulb,
 } from 'lucide-react'
-import { DashboardData, DashboardRange, ProductMetric, getDashboardData, getDashboardSalesOverview } from '../data/dashboard'
+import { DashboardData, DashboardRange, DashboardTip, ProductMetric, getDashboardData, getDashboardSalesOverview, getNextDashboardTip } from '../data/dashboard'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import gigahertzLogo from '../assets/gigahertz-logo-white.png'
 
@@ -115,6 +115,8 @@ export function Dashboard() {
   const [range, setRange] = useState<DashboardRange>('week')
   const [metric, setMetric] = useState<ProductMetric>('revenue')
   const [data, setData] = useState<DashboardData | null>(null)
+  const [advisorTip, setAdvisorTip] = useState<DashboardTip | null>(null)
+  const [advisorRefreshing, setAdvisorRefreshing] = useState(false)
   const [salesPanelData, setSalesPanelData] = useState<Pick<DashboardData, 'salesOverview' | 'salesSeries'> | null>(null)
   const [loading, setLoading] = useState(true)
   const [salesLoading, setSalesLoading] = useState(true)
@@ -125,6 +127,16 @@ export function Dashboard() {
   const [requestKey, setRequestKey] = useState(0)
 
   const reloadData = () => setRequestKey((key) => key + 1)
+
+  const refreshAdvisorTip = async () => {
+    if (!advisorTip || advisorRefreshing) return
+    setAdvisorRefreshing(true)
+    try {
+      setAdvisorTip(await getNextDashboardTip(advisorTip.message))
+    } finally {
+      setAdvisorRefreshing(false)
+    }
+  }
 
   const toggleTheme = (event: MouseEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -148,7 +160,7 @@ export function Dashboard() {
     setError(null)
     const minimumSkeletonTime = new Promise<void>((resolve) => window.setTimeout(resolve, 700))
     Promise.all([getDashboardData('week'), minimumSkeletonTime])
-      .then(([next]) => { if (current) { setData(next); setLoading(false) } })
+      .then(([next]) => { if (current) { setData(next); setAdvisorTip({ category: 'Inventory', message: next.tip, relatedItems: next.relatedSkus }); setLoading(false) } })
       .catch(() => { if (current) { setError('Dashboard data could not be loaded.'); setLoading(false) } })
     return () => { current = false }
   }, [requestKey])
@@ -215,10 +227,10 @@ export function Dashboard() {
           <div className="dashboard-primary">
             <section className="panel advisor-panel">
               <div className="advisor-content">
-                <div className="advisor-head"><div className="advisor-title"><Lightbulb size={18} /><strong>AI ADVISOR</strong><span className="slash">/</span><span>Quick Tip</span></div><span className="context-tag">Inventory</span></div>
-                {loading ? <div className="advisor-loading"><i className="skeleton-block tip-skeleton" /><i className="skeleton-block related-skeleton" /></div> : <><p className="advisor-tip">{data?.tip}</p><div className="related"><span>Related:</span>{(data?.relatedSkus ?? []).map((sku) => <code key={sku}>{sku}</code>)}</div></>}
+                <div className="advisor-head"><div className="advisor-title"><Lightbulb size={18} /><strong>AI ADVISOR</strong><span className="slash">/</span><span>Quick Tip</span></div><span className="context-tag">{advisorTip?.category ?? 'Inventory'}</span></div>
+                {loading ? <div className="advisor-loading"><i className="skeleton-block tip-skeleton" /><i className="skeleton-block related-skeleton" /></div> : <><p className="advisor-tip">{advisorTip?.message ?? data?.tip}</p><div className="related"><span>Related:</span>{(advisorTip?.relatedItems ?? data?.relatedSkus ?? []).map((item) => <code key={item}>{item}</code>)}</div></>}
               </div>
-                <footer className="advisor-footer"><span>Based on today’s sales and stock data · 15:05</span><div><button className="text-action" onClick={reloadData}><RefreshCw size={15} /> Refresh Tip</button><button className="text-action blue-action">View Details <ChevronRight size={17} /></button></div></footer>
+                <footer className="advisor-footer"><span>Based on today’s sales and stock data · 15:05</span><div><button className="text-action" onClick={refreshAdvisorTip} disabled={advisorRefreshing}><RefreshCw size={15} className={advisorRefreshing ? 'refresh-tip-spinning' : ''} /> Refresh Tip</button><button className="text-action blue-action">View Details <ChevronRight size={17} /></button></div></footer>
             </section>
 
             <section className="panel sales-panel">

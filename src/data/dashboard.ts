@@ -1,6 +1,12 @@
 export type DashboardRange = 'today' | 'week' | 'month'
 export type ProductMetric = 'revenue' | 'units'
 
+export type DashboardTip = {
+  category: string
+  message: string
+  relatedItems: string[]
+}
+
 export type DashboardProduct = {
   name: string
   units: number
@@ -73,4 +79,34 @@ export async function getDashboardData(range: DashboardRange): Promise<Dashboard
 export async function getDashboardSalesOverview(range: DashboardRange): Promise<Pick<DashboardData, 'salesOverview' | 'salesSeries'>> {
   await new Promise((resolve) => setTimeout(resolve, 180))
   return dataByRange[range]
+}
+
+const advisorTips: DashboardTip[] = [
+  {
+    category: 'Inventory',
+    message: commonData.tip,
+    relatedItems: commonData.relatedSkus,
+  },
+  {
+    category: 'Sales',
+    message: "Afternoon sales (13:00–15:00) are 28% above this week's average. Consider scheduling an additional cashier on Saturdays.",
+    relatedItems: ['13:00–15:00', 'Register 1', 'Register 2'],
+  },
+  {
+    category: 'Product Performance',
+    message: "RTX 4070 Super accounts for 38% of this week's revenue with only 2 units left. A stockout would materially affect weekend sales.",
+    relatedItems: ['GPU-NV-4070S'],
+  },
+  {
+    category: 'Operations',
+    message: '1 refund was processed today without a linked return record. Verify the entry for TXN-10478 in Activity Logs.',
+    relatedItems: ['TXN-10478'],
+  },
+]
+
+export async function getNextDashboardTip(currentMessage: string): Promise<DashboardTip> {
+  await new Promise((resolve) => setTimeout(resolve, 180))
+  const currentIndex = advisorTips.findIndex((tip) => tip.message === currentMessage)
+  const next = advisorTips[(currentIndex + 1 + advisorTips.length) % advisorTips.length]
+  return { ...next, relatedItems: [...next.relatedItems] }
 }
