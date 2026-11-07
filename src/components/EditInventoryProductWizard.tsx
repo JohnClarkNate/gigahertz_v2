@@ -115,6 +115,17 @@ export function EditInventoryProductWizard({ product, onClose, onSaved }: { prod
   }
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    // Only the final Review action may persist edits. An implicit form submit
+    // on an earlier step should take the user to Review after validation.
+    if (step !== 5) {
+      for (let index = 0; index < 5; index += 1) {
+        const result = validate(index)
+        if (result.message) { setStep(index); setError(result.message); setInvalidFields(result.fields); shake(result.fields); return }
+      }
+      setError('')
+      setStep(5)
+      return
+    }
     for (let index = 0; index < 5; index += 1) {
       const result = validate(index)
       if (result.message) { setStep(index); setError(result.message); setInvalidFields(result.fields); shake(result.fields); return }

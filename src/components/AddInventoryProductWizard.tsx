@@ -140,6 +140,26 @@ export function AddInventoryProductWizard({ onClose, onSaved }: { onClose: () =>
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    // Submission is reserved for the explicit final action on Review. If the
+    // form receives an implicit submit from an earlier step, validate and move
+    // to Review without writing the product.
+    if (step !== 5) {
+      for (let index = 0; index < 5; index += 1) {
+        const validation = validateStep(index)
+        if (validation.message) {
+          setError(validation.message)
+          setInvalidFields(validation.fields)
+          setStep(index)
+          setVisitedSteps((visited) => new Set(visited).add(index))
+          shake(validation.fields)
+          return
+        }
+      }
+      setError('')
+      setStep(5)
+      setVisitedSteps((visited) => new Set(visited).add(5))
+      return
+    }
     for (let index = 0; index < 5; index += 1) {
       const validation = validateStep(index)
       if (validation.message) {
