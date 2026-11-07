@@ -48,9 +48,19 @@ button { color: inherit; }
 
 .app-shell.light-mode .nav-item.active { background: #e1e5eb; color: #202938; }
 .app-shell.light-mode .nav-item.active:hover { background: #d8dee7; color: #202938; }
-.light-mode .segmented button.active { background: #e1e5eb; color: #202938; }
 .light-mode .stock-bar { background: #b8bec8; }
 .light-mode .product-track { background: #b8bec8; }
+
+:is(.segmented, .inv-tabs, .inv-drawer-tabs) { position: relative; isolation: isolate; }
+:is(.segmented, .inv-tabs, .inv-drawer-tabs) > button { position: relative; z-index: 1; }
+:is(.segmented, .inv-tabs, .inv-drawer-tabs) > button.active { background: transparent !important; }
+.segmented-indicator { position: absolute; z-index: 0; top: 0; left: 0; border-radius: 2px; background: #354256; pointer-events: none; will-change: transform,width; transition: transform 520ms cubic-bezier(.34,1.56,.64,1),width 360ms cubic-bezier(.34,1.56,.64,1); }
+.light-mode .segmented-indicator { background: #e1e5eb; }
+.inventory-screen.light-mode .inv-tabs .segmented-indicator,
+.inventory-screen.light-mode .inv-drawer-tabs .segmented-indicator { background: #e3e7ed; }
+@media (prefers-reduced-motion: reduce) {
+  .segmented-indicator { transition: none; }
+}
 
 .sidebar {
   position: fixed;

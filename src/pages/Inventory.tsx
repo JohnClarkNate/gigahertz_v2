@@ -4,6 +4,7 @@ import { Activity, AlertTriangle, Box, ChevronLeft, ChevronRight, Command, Dolla
 import { deleteInventoryProduct, getInventoryProducts, getInventorySoldLifetime, getInventorySpecifications, getInventoryUnitHistory, InventoryProduct, InventoryTab, markInventoryProductDefective, setInventoryProductVisibility } from '../data/inventory'
 import { AddInventoryProductWizard } from '../components/AddInventoryProductWizard'
 import { EditInventoryProductWizard } from '../components/EditInventoryProductWizard'
+import { SegmentedControl } from '../components/SegmentedControl'
 import { navigateToModule } from '../data/navigation'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import logo from '../assets/inventory-logo.png'
@@ -130,7 +131,7 @@ export function Inventory() {
         <section className="inv-summary" aria-label="Inventory summary">
           {[['Products', '12', 'Total product types'], ['Units on Hand', '78', 'Across all products'], ['Low Stock', '3', 'Products need reorder'], ['Out of Stock', '78', 'Products unavailable'], ['Defective Units', '3', 'Across 3 products']].map(([label, value, note], i) => <article className={`inv-kpi inv-kpi-${i}`} key={label}><span>{label}</span><strong><RollingSummaryValue value={value} /></strong><small>{note}</small>{i > 0 && <img className="inv-kpi-divider" src={kpiDividers} alt="" />}</article>)}
         </section>
-        <div className="inv-tabs" role="tablist"><button className={tab === 'products' ? 'active' : ''} onClick={() => { setTab('products'); setPage(0) }} role="tab" aria-selected={tab === 'products'}><Package size={15} />Products</button><button className={tab === 'defective' ? 'active' : ''} onClick={() => { setTab('defective'); setPage(0) }} role="tab" aria-selected={tab === 'defective'}>Defective Units <span>3</span></button></div>
+        <SegmentedControl className="inv-tabs" role="tablist"><button className={tab === 'products' ? 'active' : ''} onClick={() => { setTab('products'); setPage(0) }} role="tab" aria-selected={tab === 'products'}><Package size={15} />Products</button><button className={tab === 'defective' ? 'active' : ''} onClick={() => { setTab('defective'); setPage(0) }} role="tab" aria-selected={tab === 'defective'}>Defective Units <span>3</span></button></SegmentedControl>
         <section className="panel inv-table-panel">
           <div className="inv-toolbar"><label className="inv-search"><Search size={15} /><input placeholder="Search name, SKU, brand, model, or serial number" aria-label="Search inventory" value={query} onChange={(event: ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)} /></label><button className="inv-filter"><SlidersHorizontal size={15} />Filter</button><div className="inv-toolbar-spacer"/><button className="inv-secondary"><FilePlus2 size={15} />Import CSV</button><button className="inv-primary" type="button" onClick={() => setAddProductOpen(true)}><Plus size={16} />Add Product</button></div>
           <div className="inv-table-scroll"><div className="inv-table">
@@ -222,7 +223,7 @@ function InventoryDetailsDrawer({ product, initialTab = 'overview', onClose, onE
       </header>
       <section className="inv-drawer-stats" aria-label="Unit counts"><div><span>On Hand</span><strong>{product.quantity + product.defective}</strong></div><div><span>Available</span><strong>{product.quantity}</strong></div><div><span>Defective</span><strong>{product.defective}</strong></div><div><span>Sold (lifetime)</span><strong>{sold}</strong></div></section>
       <div className="inv-drawer-content">
-        <div className="inv-drawer-tabs" role="tablist"><button role="tab" aria-selected={tab === 'overview'} className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>Overview</button><button role="tab" aria-selected={tab === 'units'} className={tab === 'units' ? 'active' : ''} onClick={() => setTab('units')}>Manage Units · {history.length}</button></div>
+        <SegmentedControl className="inv-drawer-tabs" role="tablist"><button role="tab" aria-selected={tab === 'overview'} className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>Overview</button><button role="tab" aria-selected={tab === 'units'} className={tab === 'units' ? 'active' : ''} onClick={() => setTab('units')}>Manage Units · {history.length}</button></SegmentedControl>
         {tab === 'overview' ? <div className="inv-overview">
           <section className="inv-detail-section"><h3>Product Information</h3><DetailLine label="Brand" value={brand} /><DetailLine label="Model" value={model} /><DetailLine label="Category" value={product.category} /><DetailLine label="Identifier" value="Serial Number" /></section>
           <section className="inv-detail-section"><h3>Pricing</h3><DetailLine label="Cost" value={`₱${peso.format(product.cost)}.00`} /><DetailLine label="Selling Price" value={`₱${peso.format(product.price)}.00`} /><DetailLine label="Margin" value={`${margin}%`} /></section>

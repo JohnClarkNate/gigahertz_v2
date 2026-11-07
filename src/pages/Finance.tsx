@@ -4,6 +4,7 @@ import { Activity, ArrowDown, ArrowUpDown, Box, ChevronDown, DollarSign, FileTex
 import { FinanceTransaction, FinanceTransactionType, financeMockData, getFinanceData } from '../data/finance'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import { navigateToModule } from '../data/navigation'
+import { SegmentedControl } from '../components/SegmentedControl'
 import gigahertzLogo from '../assets/gigahertz-logo-white.png'
 import gigahertzLogoBlue from '../assets/gigahertz-logo-blue.png'
 
@@ -131,11 +132,11 @@ export function Finance() {
         <section className="panel finance-records">
           <header className="panel-heading finance-records-heading"><h2>Transaction records</h2><span>Showing {filtered.length} of {data.transactions.length}</span></header>
           <div className="finance-toolbar">
-            <div className="segmented finance-tabs" role="tablist" aria-label="Transaction type">
+            <SegmentedControl className="segmented finance-tabs" role="tablist" aria-label="Transaction type">
               {(['All', 'Income', 'Expense'] as TypeFilter[]).map((item) => <button type="button" key={item} role="tab" aria-selected={typeFilter === item} className={typeFilter === item ? 'active' : ''} onClick={() => setType(item)}>
                 {item === 'Income' && <i className="finance-dot income-dot" />}{item === 'Expense' && <i className="finance-dot expense-dot" />}{item === 'Expense' ? 'Expenses' : item} <small>{item === 'All' ? data.transactions.length : data.transactions.filter((transaction) => transaction.type === item).length}</small>
               </button>)}
-            </div>
+            </SegmentedControl>
             <div className="finance-filters">
               <label className="finance-search"><Search size={16} /><input aria-label="Search transactions" placeholder="Search reference, item, payee" value={query} onChange={(event: ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)} /></label>
               <label className="finance-select"><select aria-label="Filter by category" value={category} onChange={(event: ChangeEvent<HTMLSelectElement>) => setCategory(event.target.value)}><option>All categories</option>{categories.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={15} /></label>

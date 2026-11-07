@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { DashboardData, DashboardRange, DashboardTip, ProductMetric, getDashboardData, getDashboardSalesOverview, getNextDashboardTip } from '../data/dashboard'
 import { AppModule, navigateToModule } from '../data/navigation'
+import { SegmentedControl } from '../components/SegmentedControl'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import gigahertzLogo from '../assets/gigahertz-logo-white.png'
 import gigahertzLogoBlue from '../assets/gigahertz-logo-blue.png'
@@ -239,7 +240,7 @@ export function Dashboard() {
             </section>
 
             <section className="panel sales-panel">
-              <PanelHeading title="Sales Overview" subtitle="Gross sales, all registers" action={<div className="segmented">{(['today', 'week', 'month'] as DashboardRange[]).map((item) => <button key={item} className={range === item ? 'active' : ''} onClick={() => setRange(item)}>{item === 'today' ? 'Today' : item === 'week' ? 'This Week' : 'This Month'}</button>)}</div>} />
+              <PanelHeading title="Sales Overview" subtitle="Gross sales, all registers" action={<SegmentedControl className="segmented">{(['today', 'week', 'month'] as DashboardRange[]).map((item) => <button key={item} className={range === item ? 'active' : ''} onClick={() => setRange(item)}>{item === 'today' ? 'Today' : item === 'week' ? 'This Week' : 'This Month'}</button>)}</SegmentedControl>} />
               <div className="sales-totals"><div><span>Sales</span><strong>{salesLoading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(salesPanelData?.salesOverview.sales ?? 0)} currencyValue />}</strong></div><div><span>Orders</span><strong>{salesLoading ? <i className="skeleton-block value-skeleton short" /> : <RollingNumber value={salesPanelData?.salesOverview.orders ?? 0} />}</strong></div><div><span>Average Sales</span><strong>{salesLoading ? <i className="skeleton-block value-skeleton" /> : <RollingNumber value={formatPeso(salesPanelData?.salesOverview.average ?? 0)} currencyValue />}</strong></div></div>
               {salesLoading ? <div className="chart-skeleton"><i /><i /><i /><i /></div> : <SalesChart key={range} values={salesPanelData?.salesSeries ?? []} range={range} />}
             </section>
@@ -258,7 +259,7 @@ export function Dashboard() {
             </section>
 
             <section className="panel products-panel">
-              <PanelHeading title="Top Products" subtitle="This week" action={<div className="segmented metric-toggle"><button className={metric === 'revenue' ? 'active' : ''} onClick={() => setMetric('revenue')}>Revenue</button><button className={metric === 'units' ? 'active' : ''} onClick={() => setMetric('units')}>Units</button></div>} />
+              <PanelHeading title="Top Products" subtitle="This week" action={<SegmentedControl className="segmented metric-toggle"><button className={metric === 'revenue' ? 'active' : ''} onClick={() => setMetric('revenue')}>Revenue</button><button className={metric === 'units' ? 'active' : ''} onClick={() => setMetric('units')}>Units</button></SegmentedControl>} />
               <div className="product-list">{loading ? [1, 2, 3, 4, 5].map((item) => <div className="product-row skeleton" key={item} />) : filteredProducts.length ? filteredProducts.map((product, index) => {
                 const amount = product[metric]
                 return <div className="product-row" key={product.name}>
