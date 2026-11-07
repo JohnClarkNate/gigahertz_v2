@@ -109,7 +109,7 @@ export function Inventory() {
     else update()
   }
 
-  const navButton = (item: typeof navMain[number]) => <a key={item.label} className={`nav-item ${item.label === 'Inventory' ? 'active' : ''}`} href={item.href}><item.Icon size={21} strokeWidth={1.5} /><span>{item.label}</span>{item.label === 'Inventory' && <img className="inv-selected-nav" src={selectedNav} alt="" />}</a>
+  const navButton = (item: typeof navMain[number]) => <a key={item.label} className={`nav-item ${item.label === 'Inventory' ? 'active' : ''}`} href={item.href} onClick={(event) => { if (item.label === 'Inventory') event.preventDefault() }}><item.Icon size={21} strokeWidth={1.5} /><span>{item.label}</span>{item.label === 'Inventory' && <img className="inv-selected-nav" src={selectedNav} alt="" />}</a>
   return <div className={`app-shell inventory-screen ${dark ? '' : 'light-mode'}`}>
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
       <div className="brand"><img src={logo} alt="Gigahertz" /></div>
@@ -117,7 +117,7 @@ export function Inventory() {
       <nav className="side-nav">
         <button className="nav-item report-link"><FileText size={21} strokeWidth={1.5} /><span>Reports</span></button>
         <p className="nav-label">MAIN</p>{navMain.map(navButton)}
-        <p className="nav-label management-label">MANAGEMENT</p>{navManagement.map(({ label, Icon }) => <a className="nav-item" key={label} href="#"><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a>)}
+        <p className="nav-label management-label">MANAGEMENT</p>{navManagement.map(({ label, Icon }) => { const href = label === 'Finance' ? '/?module=finance' : undefined; return <a className="nav-item" key={label} href={href ?? '#'} onClick={(event) => { if (!href) event.preventDefault() }}><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a> })}
       </nav>
       <div className="sidebar-bottom"><div className="account"><img src={avatar} alt="" /><div><strong>Clark Nate</strong><span>Admin</span></div></div><button className="signout"><LogOut size={18} strokeWidth={1.5} /><span>Sign out</span></button></div>
     </aside>

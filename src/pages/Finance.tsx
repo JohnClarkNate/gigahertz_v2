@@ -73,8 +73,8 @@ export function Finance() {
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') document.startViewTransition(update)
     else update()
   }
-  const navLink = (label: string, Icon: typeof LayoutDashboard, href: string, active = false) => <a key={label} href={href} className={`nav-item ${active ? 'active' : ''}`}><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a>
-  const navList = (items: typeof mainNav | typeof managementNav) => items.map(({ label, Icon }) => navLink(label, Icon, label === 'Inventory' ? '/?module=inventory' : label === 'Finance' ? '/?module=finance' : '/', label === 'Finance'))
+  const navLink = (label: string, Icon: typeof LayoutDashboard, href: string | undefined, active = false) => <a key={label} href={href ?? '#'} onClick={(event) => { if (!href || active) event.preventDefault() }} className={`nav-item ${active ? 'active' : ''}`}><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a>
+  const navList = (items: typeof mainNav | typeof managementNav) => items.map(({ label, Icon }) => navLink(label, Icon, label === 'Dashboard' ? '/' : label === 'Inventory' ? '/?module=inventory' : label === 'Finance' ? '/?module=finance' : undefined, label === 'Finance'))
 
   return <div className={`app-shell finance-screen ${dark ? '' : 'light-mode'}`}>
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>

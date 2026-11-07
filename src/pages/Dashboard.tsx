@@ -179,11 +179,13 @@ export function Dashboard() {
   ) ?? [], [data, query])
   const maxProductValue = Math.max(1, ...filteredProducts.map((product) => product[metric]))
 
-  const renderNavigation = (items: typeof mainNav) => items.map(({ label, icon: Icon }) => (
-    <a key={label} href={label === 'Inventory' ? '/?module=inventory' : label === 'Finance' ? '/?module=finance' : '/'} className={`nav-item ${label === 'Dashboard' ? 'active' : ''}`}>
+  const renderNavigation = (items: typeof mainNav | typeof managementNav) => items.map(({ label, icon: Icon }) => {
+    const href = label === 'Dashboard' ? '/' : label === 'Inventory' ? '/?module=inventory' : label === 'Finance' ? '/?module=finance' : undefined
+    const active = label === 'Dashboard'
+    return <a key={label} href={href ?? '#'} onClick={(event) => { if (!href || active) event.preventDefault() }} className={`nav-item ${active ? 'active' : ''}`}>
       <Icon size={21} strokeWidth={1.5} /><span>{label}</span>
     </a>
-  ))
+  })
 
   return <div className={`app-shell ${dark ? '' : 'light-mode'}`}>
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
