@@ -6,8 +6,10 @@ import {
   ShoppingCart, Sun, Users, DollarSign, Lightbulb,
 } from 'lucide-react'
 import { DashboardData, DashboardRange, DashboardTip, ProductMetric, getDashboardData, getDashboardSalesOverview, getNextDashboardTip } from '../data/dashboard'
+import { AppModule, navigateToModule } from '../data/navigation'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import gigahertzLogo from '../assets/gigahertz-logo-white.png'
+import gigahertzLogoBlue from '../assets/gigahertz-logo-blue.png'
 
 const mainNav = [
   { label: 'Dashboard', icon: LayoutDashboard },
@@ -180,16 +182,17 @@ export function Dashboard() {
   const maxProductValue = Math.max(1, ...filteredProducts.map((product) => product[metric]))
 
   const renderNavigation = (items: typeof mainNav | typeof managementNav) => items.map(({ label, icon: Icon }) => {
-    const href = label === 'Dashboard' ? '/' : label === 'Inventory' ? '/?module=inventory' : label === 'Finance' ? '/?module=finance' : undefined
+    const target = label === 'Dashboard' ? 'dashboard' : label === 'Inventory' ? 'inventory' : label === 'Finance' ? 'finance' : undefined
+    const href = target === 'dashboard' ? '/' : target ? `/?module=${target}` : '#'
     const active = label === 'Dashboard'
-    return <a key={label} href={href ?? '#'} onClick={(event) => { if (!href || active) event.preventDefault() }} className={`nav-item ${active ? 'active' : ''}`}>
+    return <a key={label} href={href} onClick={(event) => { event.preventDefault(); if (target) navigateToModule(target as AppModule) }} className={`nav-item ${active ? 'active' : ''}`}>
       <Icon size={21} strokeWidth={1.5} /><span>{label}</span>
     </a>
   })
 
   return <div className={`app-shell ${dark ? '' : 'light-mode'}`}>
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-      <div className="brand"><img src={gigahertzLogo} alt="Gigahertz" /></div>
+      <div className="brand"><img src={dark ? gigahertzLogo : gigahertzLogoBlue} alt="Gigahertz" /></div>
       <nav className="side-nav">
         <button className="nav-item report-link"><FileText size={21} strokeWidth={1.5} /><span>Reports</span></button>
         <p className="nav-label">MAIN</p>

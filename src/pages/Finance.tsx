@@ -3,7 +3,9 @@ import type { ChangeEvent, MouseEvent } from 'react'
 import { Activity, ArrowDown, ArrowUpDown, Box, ChevronDown, DollarSign, FileText, LayoutDashboard, LogOut, Menu, Moon, Search, ShoppingCart, Sun, Users } from 'lucide-react'
 import { FinanceTransaction, FinanceTransactionType, financeMockData, getFinanceData } from '../data/finance'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
+import { navigateToModule } from '../data/navigation'
 import gigahertzLogo from '../assets/gigahertz-logo-white.png'
+import gigahertzLogoBlue from '../assets/gigahertz-logo-blue.png'
 
 type TypeFilter = 'All' | FinanceTransactionType
 type SortField = 'date' | 'amount'
@@ -11,6 +13,25 @@ type SortField = 'date' | 'amount'
 const amountFormat = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const mainNav = [{ label: 'Dashboard', Icon: LayoutDashboard }, { label: 'Inventory', Icon: Box }]
 const managementNav = [{ label: 'Users', Icon: Users }, { label: 'Finance', Icon: DollarSign }, { label: 'Sales', Icon: ShoppingCart }, { label: 'Activity Logs', Icon: Activity }]
+
+function RollingDigit({ digit, place }: { digit: number; place: number }) {
+  const [position, setPosition] = useState(0)
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setPosition(digit))
+    return () => window.cancelAnimationFrame(frame)
+  }, [digit])
+  return <span className="rolling-digit" aria-hidden="true"><span className="rolling-digit-track" style={{ transform: `translateY(-${position}em)`, transitionDelay: `${Math.min(place, 8) * 18}ms` }}>{Array.from({ length: 10 }, (_, value) => <span key={value}>{value}</span>)}</span></span>
+}
+
+function RollingNumber({ value }: { value: string | number }) {
+  const characters = String(value)
+  let digitPlace = characters.replace(/\D/g, '').length - 1
+  return <span className="rolling-number" aria-label={characters}>{Array.from(characters).map((character, index) => {
+    if (!/\d/.test(character)) return <span className="rolling-static" key={`static-${index}-${character}`} aria-hidden="true">{character}</span>
+    const place = digitPlace--
+    return <RollingDigit key={`digit-${place}`} digit={Number(character)} place={place} />
+  })}</span>
+}
 
 function formatPeso(amount: number) {
   return `${amount < 0 ? '−' : '+'}₱${amountFormat.format(Math.abs(amount))}`
@@ -73,12 +94,12 @@ export function Finance() {
     if ('startViewTransition' in document && typeof document.startViewTransition === 'function') document.startViewTransition(update)
     else update()
   }
-  const navLink = (label: string, Icon: typeof LayoutDashboard, href: string | undefined, active = false) => <a key={label} href={href ?? '#'} onClick={(event) => { if (!href || active) event.preventDefault() }} className={`nav-item ${active ? 'active' : ''}`}><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a>
-  const navList = (items: typeof mainNav | typeof managementNav) => items.map(({ label, Icon }) => navLink(label, Icon, label === 'Dashboard' ? '/' : label === 'Inventory' ? '/?module=inventory' : label === 'Finance' ? '/?module=finance' : undefined, label === 'Finance'))
+  const navLink = (label: string, Icon: typeof LayoutDashboard, target: 'dashboard' | 'inventory' | 'finance' | undefined, active = false) => <a key={label} href={target === 'dashboard' ? '/' : target ? `/?module=${target}` : '#'} onClick={(event) => { event.preventDefault(); if (target) navigateToModule(target) }} className={`nav-item ${active ? 'active' : ''}`}><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a>
+  const navList = (items: typeof mainNav | typeof managementNav) => items.map(({ label, Icon }) => navLink(label, Icon, label === 'Dashboard' ? 'dashboard' : label === 'Inventory' ? 'inventory' : label === 'Finance' ? 'finance' : undefined, label === 'Finance'))
 
   return <div className={`app-shell finance-screen ${dark ? '' : 'light-mode'}`}>
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-      <div className="brand"><img src={gigahertzLogo} alt="Gigahertz" /></div>
+      <div className="brand"><img src={dark ? gigahertzLogo : gigahertzLogoBlue} alt="Gigahertz" /></div>
       <nav className="side-nav">
         <button className="nav-item report-link"><FileText size={21} strokeWidth={1.5} /><span>Reports</span></button>
         <p className="nav-label">MAIN</p>{navList(mainNav)}
@@ -96,15 +117,15 @@ export function Finance() {
 
       <div className="content-wrap finance-content">
         <section className="finance-page-heading">
-          <div><div className="finance-title-line"><h1>Finance</h1><span className="finance-sample-badge">Sample data</span></div><p>Income, expenses and net balance for <strong>{data.period}</strong> · records as of {data.recordedAsOf}</p></div>
+          <div><div className="finance-title-line"><h1>Finance</h1></div><p>Income, expenses and net balance for <strong>{data.period}</strong> · records as of {data.recordedAsOf}</p></div>
           <button className="finance-range" type="button" aria-label="Date range: This month">This month<ChevronDown size={15} /></button>
         </section>
 
         <section className="metrics-grid finance-metrics" aria-label="Finance summary">
-          <article className="metric finance-metric"><div className="metric-label">Income</div><strong className="metric-value finance-income">₱{amountFormat.format(incomeTotal)}</strong><div className="metric-detail"><b className="finance-income">+229.0%</b> vs Oct 1–7</div></article>
-          <article className="metric finance-metric"><div className="metric-label">Expenses</div><strong className="metric-value finance-expense">₱{amountFormat.format(expenseTotal)}</strong><div className="metric-detail"><b className="finance-change-expense">+87.9%</b> vs Oct 1–7</div></article>
-          <article className="metric finance-metric"><div className="metric-label">Net balance</div><strong className={`metric-value ${netTotal >= 0 ? 'finance-income' : 'finance-expense'}`}>{netTotal < 0 ? '−' : ''}₱{amountFormat.format(Math.abs(netTotal))}</strong><div className="metric-detail"><b className="finance-income">+₱11,382.00</b> vs Oct 1–7</div></article>
-          <article className="metric finance-metric"><div className="metric-label">Transactions</div><strong className="metric-value">{data.transactions.length}</strong><div className="metric-detail">{data.transactions.filter((item) => item.type === 'Income').length} in · {data.transactions.filter((item) => item.type === 'Expense').length} out</div></article>
+          <article className="metric finance-metric"><div className="metric-label">Income</div><strong className="metric-value finance-income">₱<RollingNumber value={amountFormat.format(incomeTotal)} /></strong><div className="metric-detail"><b className="finance-income">+229.0%</b> vs Oct 1–7</div></article>
+          <article className="metric finance-metric"><div className="metric-label">Expenses</div><strong className="metric-value finance-expense">₱<RollingNumber value={amountFormat.format(expenseTotal)} /></strong><div className="metric-detail"><b className="finance-change-expense">+87.9%</b> vs Oct 1–7</div></article>
+          <article className="metric finance-metric"><div className="metric-label">Net balance</div><strong className={`metric-value ${netTotal >= 0 ? 'finance-income' : 'finance-expense'}`}>{netTotal < 0 ? '−' : ''}₱<RollingNumber value={amountFormat.format(Math.abs(netTotal))} /></strong><div className="metric-detail"><b className="finance-income">+₱11,382.00</b> vs Oct 1–7</div></article>
+          <article className="metric finance-metric"><div className="metric-label">Transactions</div><strong className="metric-value"><RollingNumber value={data.transactions.length} /></strong><div className="metric-detail"><RollingNumber value={data.transactions.filter((item) => item.type === 'Income').length} /> in · <RollingNumber value={data.transactions.filter((item) => item.type === 'Expense').length} /> out</div></article>
         </section>
 
         <section className="panel finance-records">

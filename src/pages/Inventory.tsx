@@ -4,8 +4,10 @@ import { Activity, AlertTriangle, Box, ChevronLeft, ChevronRight, Command, Dolla
 import { deleteInventoryProduct, getInventoryProducts, getInventorySoldLifetime, getInventorySpecifications, getInventoryUnitHistory, InventoryProduct, InventoryTab, markInventoryProductDefective, setInventoryProductVisibility } from '../data/inventory'
 import { AddInventoryProductWizard } from '../components/AddInventoryProductWizard'
 import { EditInventoryProductWizard } from '../components/EditInventoryProductWizard'
+import { navigateToModule } from '../data/navigation'
 import { getInitialDarkTheme, saveThemePreference } from '../data/theme'
 import logo from '../assets/inventory-logo.png'
+import gigahertzLogoBlue from '../assets/gigahertz-logo-blue.png'
 import avatar from '../assets/inventory-avatar.svg'
 import selectedNav from '../assets/inventory-selected-nav.svg'
 import separators from '../assets/inventory-separators.svg'
@@ -109,15 +111,15 @@ export function Inventory() {
     else update()
   }
 
-  const navButton = (item: typeof navMain[number]) => <a key={item.label} className={`nav-item ${item.label === 'Inventory' ? 'active' : ''}`} href={item.href} onClick={(event) => { if (item.label === 'Inventory') event.preventDefault() }}><item.Icon size={21} strokeWidth={1.5} /><span>{item.label}</span>{item.label === 'Inventory' && <img className="inv-selected-nav" src={selectedNav} alt="" />}</a>
+  const navButton = (item: typeof navMain[number]) => <a key={item.label} className={`nav-item ${item.label === 'Inventory' ? 'active' : ''}`} href={item.href} onClick={(event) => { event.preventDefault(); navigateToModule(item.label === 'Inventory' ? 'inventory' : 'dashboard') }}><item.Icon size={21} strokeWidth={1.5} /><span>{item.label}</span>{item.label === 'Inventory' && <img className="inv-selected-nav" src={selectedNav} alt="" />}</a>
   return <div className={`app-shell inventory-screen ${dark ? '' : 'light-mode'}`}>
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-      <div className="brand"><img src={logo} alt="Gigahertz" /></div>
+      <div className="brand"><img src={dark ? logo : gigahertzLogoBlue} alt="Gigahertz" /></div>
       <img className="inv-sidebar-rule" src={sidebarLine} alt="" />
       <nav className="side-nav">
         <button className="nav-item report-link"><FileText size={21} strokeWidth={1.5} /><span>Reports</span></button>
         <p className="nav-label">MAIN</p>{navMain.map(navButton)}
-        <p className="nav-label management-label">MANAGEMENT</p>{navManagement.map(({ label, Icon }) => { const href = label === 'Finance' ? '/?module=finance' : undefined; return <a className="nav-item" key={label} href={href ?? '#'} onClick={(event) => { if (!href) event.preventDefault() }}><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a> })}
+        <p className="nav-label management-label">MANAGEMENT</p>{navManagement.map(({ label, Icon }) => { const href = label === 'Finance' ? '/?module=finance' : undefined; return <a className="nav-item" key={label} href={href ?? '#'} onClick={(event) => { event.preventDefault(); if (label === 'Finance') navigateToModule('finance') }}><Icon size={21} strokeWidth={1.5} /><span>{label}</span></a> })}
       </nav>
       <div className="sidebar-bottom"><div className="account"><img src={avatar} alt="" /><div><strong>Clark Nate</strong><span>Admin</span></div></div><button className="signout"><LogOut size={18} strokeWidth={1.5} /><span>Sign out</span></button></div>
     </aside>
