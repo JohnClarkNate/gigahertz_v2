@@ -228,7 +228,7 @@ export function Dashboard() {
             <section className="panel advisor-panel">
               <div className="advisor-content">
                 <div className="advisor-head"><div className="advisor-title"><Lightbulb size={18} /><strong>AI ADVISOR</strong><span className="slash">/</span><span>Quick Tip</span></div><span className="context-tag">{advisorTip?.category ?? 'Inventory'}</span></div>
-                {loading ? <div className="advisor-loading"><i className="skeleton-block tip-skeleton" /><i className="skeleton-block related-skeleton" /></div> : <><p className="advisor-tip">{advisorTip?.message ?? data?.tip}</p><div className="related"><span>Related:</span>{(advisorTip?.relatedItems ?? data?.relatedSkus ?? []).map((item) => <code key={item}>{item}</code>)}</div></>}
+                {loading || advisorRefreshing ? <div className="advisor-loading" aria-label="Loading advisor tip" aria-live="polite"><i className="skeleton-block tip-skeleton" /><i className="skeleton-block related-skeleton" /></div> : <><p className="advisor-tip">{advisorTip?.message ?? data?.tip}</p><div className="related"><span>Related:</span>{(advisorTip?.relatedItems ?? data?.relatedSkus ?? []).map((item) => <code key={item}>{item}</code>)}</div></>}
               </div>
                 <footer className="advisor-footer"><span>Based on today’s sales and stock data · 15:05</span><div><button className="text-action" onClick={refreshAdvisorTip} disabled={advisorRefreshing}><RefreshCw size={15} className={advisorRefreshing ? 'refresh-tip-spinning' : ''} /> Refresh Tip</button><button className="text-action blue-action">View Details <ChevronRight size={17} /></button></div></footer>
             </section>
